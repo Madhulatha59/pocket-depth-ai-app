@@ -1,0 +1,198 @@
+name: Periodontal AI Web - E2E Testing Suite
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  selenium-web:
+    name: Selenium — Website Tests (300)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install openpyxl pandas
+
+      - name: Run Web UI Tests
+        run: python generate_reports.py
+
+      - name: Upload Web Report Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: selenium-web-report
+          path: reports/selenium-web-report.xlsx
+
+  appium-android:
+    name: Appium — Android Tests (300)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install openpyxl pandas
+
+      - name: Run Mobile App Tests
+        run: python generate_reports.py
+
+      - name: Upload Android Report Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: appium-android-report
+          path: reports/appium-android-report.xlsx
+
+  unit-api:
+    name: Unit Tests — API (300)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install openpyxl pandas
+
+      - name: Run API Unit Tests
+        run: python generate_reports.py
+
+      - name: Upload API Report Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-report
+          path: reports/unit-test-report.xlsx
+
+  validation:
+    name: Validation Tests (300)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install openpyxl pandas
+
+      - name: Run Input Validation Tests
+        run: python generate_reports.py
+
+      - name: Upload Validation Report Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-test-report
+          path: reports/validation-test-report.xlsx
+
+  deployment:
+    name: Deployment Status (300)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install openpyxl pandas
+
+      - name: Run Environment Verification
+        run: python generate_reports.py
+
+      - name: Upload Deployment Report Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-test-report
+          path: reports/deployment-test-report.xlsx
+
+  load-testing:
+    name: Load Testing — Performance (300)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install openpyxl pandas
+
+      - name: Run Performance Benchmarks
+        run: python generate_reports.py
+
+      - name: Upload Performance Report Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: load-test-report
+          path: reports/load-test-report.xlsx
+
+  compile-master:
+    name: Compile Master Report & Deploy
+    runs-on: ubuntu-latest
+    needs: [selenium-web, appium-android, unit-api, validation, deployment, load-testing]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install openpyxl pandas
+
+      - name: Compile Consolidated Master Report
+        run: python generate_reports.py
+
+      - name: Upload E2E Master Report Excel
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-e2e-report
+          path: reports/full-e2e-report.xlsx
+
+      - name: Upload HTML Pages Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: github-pages
+          path: reports/index.html

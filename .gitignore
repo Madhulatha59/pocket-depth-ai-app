@@ -1,0 +1,14 @@
+# Node modules (if any get added)
+node_modules/
+
+# Reports output (individual run files, keep only the script/workflow)
+/reports/
+
+# IDE files
+.idea/
+*.xml
+*.iml
+
+# OS files
+.DS_Store
+Thumbs.db
