@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.PeriodontalAISystem" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Custom window properties can be added here if needed. Jetpack Compose handles primary rendering. -->
+    </style>
+</resources>

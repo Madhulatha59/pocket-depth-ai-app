@@ -1,0 +1,32 @@
+# Gradle files
+.gradle/
+build/
+app/build/
+
+# Android Studio / IntelliJ files
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# Local configuration file (contains local paths to SDK)
+local.properties
+
+# Log files
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Reports output (individual run files, keep only the script/workflow)
+/reports/
+
+# Voice periodontal app specific ignores
+periodontal ai voice based app/.gradle/
+periodontal ai voice based app/build/
+periodontal ai voice based app/app/build/
+periodontal ai voice based app/.idea/
+periodontal ai voice based app/local.properties
+periodontal ai voice based app/*.iml
