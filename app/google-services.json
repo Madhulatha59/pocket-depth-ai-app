@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "273885514086",
+    "project_id": "pocket-depth-ai",
+    "storage_bucket": "pocket-depth-ai.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:273885514086:android:35165c3b538f057497a0a7",
+        "android_client_info": {
+          "package_name": "com.example.pocketdepthai"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA4X3hCmmHwTXFmuZxOpWNxlTCUNCXPa6A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

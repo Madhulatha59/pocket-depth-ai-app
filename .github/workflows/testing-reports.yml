@@ -1,8 +1,8 @@
-name: Periodontal AI Web - E2E Testing Suite
+name: Periodontal AI - E2E Testing Suite
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: [ "main", "master", "devel" ]
   pull_request:
     branches: [ "main", "master" ]
   workflow_dispatch:

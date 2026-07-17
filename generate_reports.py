@@ -408,7 +408,7 @@ def generate_reports():
         round(duration_all, 2)
     ])
     
-    apply_excel_styling(dash_ws, "Periodontal AI Web - E2E Master Test Report Summary", is_dashboard=True)
+    apply_excel_styling(dash_ws, "Periodontal AI System - E2E Master Test Report Summary", is_dashboard=True)
     
     # Add Bar Chart to Dashboard
     chart = BarChart()
@@ -525,7 +525,7 @@ def generate_html_summary(reports_dir, summary_rows, total, passed, failed, skip
 </head>
 <body>
     <div class="container">
-        <h1>Periodontal AI Web - E2E Master Test Report Summary</h1>
+        <h1>Periodontal AI System - E2E Master Test Report Summary</h1>
         <p>Generated on: {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}</p>
         
         <div class="metrics">
