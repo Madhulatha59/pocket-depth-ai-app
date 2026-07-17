@@ -40,17 +40,19 @@ var ApiService = (() => {
       SafeStorage.setItem('pdd_firebase_enabled', 'true');
     }
 
-    if (!configStr) {
-      const defaultConfig = {
-        apiKey: "AIzaSyBYlUNLivTMepgjU5pvA1UwgNfrbiBabwc",
-        authDomain: "pocket-depth-ai-web.firebaseapp.com",
-        projectId: "pocket-depth-ai-web",
-        storageBucket: "pocket-depth-ai-web.firebasestorage.app",
-        messagingSenderId: "346764229172",
-        appId: "1:346764229172:web:fae1c0c59d254308476861"
-      };
-      SafeStorage.setItem('pdd_firebase_config', JSON.stringify(defaultConfig));
-      configStr = JSON.stringify(defaultConfig);
+    const correctConfig = {
+      apiKey: "AIzaSyA4X3hCmmHwTXFmuZxOpWNxlTCUNCXPa6A",
+      authDomain: "pocket-depth-ai.firebaseapp.com",
+      projectId: "pocket-depth-ai",
+      storageBucket: "pocket-depth-ai.firebasestorage.app",
+      messagingSenderId: "273885514086",
+      appId: "1:273885514086:web:35165c3b538f057497a0a7"
+    };
+
+    // If config doesn't exist or uses the old pocket-depth-ai-web placeholder project
+    if (!configStr || configStr.includes("pocket-depth-ai-web")) {
+      SafeStorage.setItem('pdd_firebase_config', JSON.stringify(correctConfig));
+      configStr = JSON.stringify(correctConfig);
     }
 
     if (isEnabled === 'true' && configStr) {
@@ -92,19 +94,26 @@ var ApiService = (() => {
           const userCredential = await auth.createUserWithEmailAndPassword(email, password);
           const uid = userCredential.user.uid;
           try {
-            await db.collection('clinicians').doc(uid).set({
+            // Write to both "users" (Android schema) and "clinicians" (Web backwards compatibility)
+            const clinicianDetails = {
               name,
               email,
               phone,
               createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
+            };
+            await db.collection('users').doc(uid).set(clinicianDetails);
+            await db.collection('clinicians').doc(uid).set(clinicianDetails);
           } catch (dbErr) {
             console.warn('[Firebase] Failed to write profile to Firestore:', dbErr);
           }
           SafeStorage.setItem('pdd_registered_user', JSON.stringify({ name, email, phone }));
           return { success: true, message: `Successfully registered profile for Dr. ${name} in Firebase.`, name };
         } catch (e) {
-          console.error('[Firebase] User registration failed, falling back to local registration:', e);
+          console.error('[Firebase] User registration failed:', e);
+          // Propagate credential/authentication specific errors to the UI
+          if (e.code && e.code.startsWith('auth/')) {
+            throw new Error(e.message || "Failed to create clinician account.");
+          }
           SafeStorage.setItem('pdd_registered_user', JSON.stringify({ name, email, phone }));
           return { success: true, message: `Offline Fallback Active: Registered clinician locally.`, name, isOfflineFallback: true };
         }
@@ -123,7 +132,11 @@ var ApiService = (() => {
           let name = "Dr. Sarah Johnson";
           let phone = "";
           try {
-            const doc = await db.collection('clinicians').doc(uid).get();
+            // Fetch from "users" (Android database schema) or fall back to "clinicians"
+            let doc = await db.collection('users').doc(uid).get();
+            if (!doc.exists) {
+              doc = await db.collection('clinicians').doc(uid).get();
+            }
             if (doc.exists) {
               name = doc.data().name;
               phone = doc.data().phone || "";
@@ -137,7 +150,12 @@ var ApiService = (() => {
           SafeStorage.setItem('pdd_registered_user', JSON.stringify({ name, email, phone }));
           return { success: true, message: `Firebase Verified: Welcome back, Dr. ${name}`, name };
         } catch (e) {
-          console.error('[Firebase] Login failed, falling back to local verification:', e);
+          console.error('[Firebase] Login failed:', e);
+          // Block login if they enter wrong credentials online
+          if (e.code && (e.code === 'auth/wrong-password' || e.code === 'auth/user-not-found' || e.code === 'auth/invalid-email' || e.code === 'auth/invalid-credential' || e.code === 'auth/user-disabled')) {
+            throw new Error(e.message || "Invalid authentication credentials.");
+          }
+          // Otherwise, only fallback to local verification if it's a network/connection error
           let name = "Dr. Sarah Johnson";
           const storedUser = SafeStorage.getItem('pdd_registered_user');
           if (storedUser) {
@@ -175,17 +193,21 @@ var ApiService = (() => {
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
           };
           try {
-            await db.collection('patients').add(newPatient);
+            // Write using patient name as Document ID (Android compatible)
+            await db.collection('patients').doc(name).set(newPatient);
           } catch (dbErr) {
             console.warn('[Firebase] Failed to add patient to Firestore:', dbErr);
+            await db.collection('patients').add(newPatient);
           }
 
           // Also update local cache list
           const localPatients = JSON.parse(SafeStorage.getItem('pdd_patients')) || [];
-          localPatients.push({ name, email, phone, history });
-          SafeStorage.setItem('pdd_patients', JSON.stringify(localPatients));
+          if (!localPatients.some(p => p.name === name)) {
+            localPatients.push({ name, email, phone, history });
+            SafeStorage.setItem('pdd_patients', JSON.stringify(localPatients));
+          }
 
-          return { success: true, message: `Patient '${name}' registered locally (Cloud Sync pending/disabled).` };
+          return { success: true, message: `Patient '${name}' registered and synced to Firebase.` };
         } catch (e) {
           console.error('[Firebase] Patient registration failed:', e);
           throw new Error(e.message || "Failed to sync patient data.");
@@ -193,8 +215,10 @@ var ApiService = (() => {
       } else {
         // Local fallback
         const localPatients = JSON.parse(SafeStorage.getItem('pdd_patients')) || [];
-        localPatients.push({ name, email, phone, history });
-        SafeStorage.setItem('pdd_patients', JSON.stringify(localPatients));
+        if (!localPatients.some(p => p.name === name)) {
+          localPatients.push({ name, email, phone, history });
+          SafeStorage.setItem('pdd_patients', JSON.stringify(localPatients));
+        }
         return { success: true, message: `Registered locally. XAMPP server offline.` };
       }
     },
@@ -203,9 +227,14 @@ var ApiService = (() => {
       if (isFirebaseConnected) {
         try {
           const clinicianId = auth.currentUser ? auth.currentUser.uid : 'anonymous';
-          const snapshot = await db.collection('patients')
-            .where('clinicianId', '==', clinicianId)
-            .get();
+          let snapshot;
+          try {
+            // Retrieve all patients (Android schema allows general list visibility)
+            snapshot = await db.collection('patients').get();
+          } catch (qErr) {
+            console.warn('[Firebase] Query all patients failed, trying clinicianId query:', qErr);
+            snapshot = await db.collection('patients').where('clinicianId', '==', clinicianId).get();
+          }
 
           const patientsList = [];
           snapshot.forEach(doc => {
@@ -243,7 +272,9 @@ var ApiService = (() => {
       if (isFirebaseConnected) {
         try {
           const clinicianId = auth.currentUser ? auth.currentUser.uid : 'anonymous';
-          await db.collection('measurements').add({
+          // Align with Android schema: tooth_measurements collection, Document ID format ${patientName}_tooth_${toothNumber}_${timestamp}
+          const documentId = `${patientName}_tooth_${toothNumber}_${timestamp}`;
+          await db.collection('tooth_measurements').doc(documentId).set({
             patientName,
             toothNumber,
             values,
