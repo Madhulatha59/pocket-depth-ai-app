@@ -3,7 +3,7 @@
    Port of ToothViewModel's analyzeAndStoreMetrics logic
    ============================================================ */
 
-const AnalyticsEngine = (() => {
+var AnalyticsEngine = (() => {
   /**
    * Computes clinical metrics and classification based on tooth measurements
    * @param {Object} state - The current application state containing manual inputs and allToothData
@@ -159,3 +159,6 @@ const AnalyticsEngine = (() => {
 
   return { computeMetrics };
 })();
+
+window.AnalyticsEngine = AnalyticsEngine;
+

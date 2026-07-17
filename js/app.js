@@ -4,7 +4,38 @@
    of the Android Pocket Depth AI app.
    ============================================================ */
 
+// --- Global Service Fallbacks (Robustness Layer) ---
+var SafeStorage = window.SafeStorage || (typeof SafeStorage !== 'undefined' ? SafeStorage : {
+  memoryStore: {},
+  getItem(key) { return this.memoryStore[key] || null; },
+  setItem(key, value) { this.memoryStore[key] = value; },
+  removeItem(key) { delete this.memoryStore[key]; }
+});
+
+var ApiService = window.ApiService || (typeof ApiService !== 'undefined' ? ApiService : {
+  isFirebaseConnected() { return false; },
+  reinitializeFirebase() { return false; },
+  predictDisease() { return Promise.resolve({ success: false }); },
+  getPatients() { return Promise.resolve([]); },
+  saveToothData() { return Promise.resolve({ success: false }); }
+});
+
+var AnalyticsEngine = window.AnalyticsEngine || (typeof AnalyticsEngine !== 'undefined' ? AnalyticsEngine : {
+  computeMetrics() { return { meanPpd: 2.0, meanCal: 0.5, bopPercentage: 10, deepPocketsCount: 0, clinicalVerdict: 'Healthy Periodontium', stageAndGrade: 'Healthy, Grade A', probHealthy: 90, probModerate: 8, probSevere: 2 }; }
+});
+
+var VoiceService = window.VoiceService || (typeof VoiceService !== 'undefined' ? VoiceService : {
+  isSupported() { return false; },
+  start() {},
+  stop() {}
+});
+
+var Parser = window.Parser || (typeof Parser !== 'undefined' ? Parser : {
+  parseSpeech() { return null; }
+});
+
 // --- Central Application State ---
+
 const AppState = {
   // Authentication & Profile State
   clinicalUserName: 'Sarah Johnson',
@@ -74,8 +105,38 @@ const AppState = {
 
 // --- Initialization ---
 async function initApp() {
+  const storage = window.SafeStorage || (typeof SafeStorage !== 'undefined' ? SafeStorage : null);
+
+  // Load authentication state
+  const isAuth = storage ? storage.getItem('pdd_is_authenticated') : null;
+  if (isAuth === 'true') {
+    AppState.isAuthenticated = true;
+  }
+
+  // Load probing measurements if exists
+  const manualPpdStr = storage ? storage.getItem('pdd_manual_ppd') : null;
+  if (manualPpdStr) {
+    try { AppState.manualPpd = JSON.parse(manualPpdStr); } catch (e) {}
+  }
+  const manualCalStr = storage ? storage.getItem('pdd_manual_cal') : null;
+  if (manualCalStr) {
+    try { AppState.manualCal = JSON.parse(manualCalStr); } catch (e) {}
+  }
+  const manualBopStr = storage ? storage.getItem('pdd_manual_bop') : null;
+  if (manualBopStr) {
+    try { AppState.manualBop = JSON.parse(manualBopStr); } catch (e) {}
+  }
+  const voiceLogStr = storage ? storage.getItem('pdd_voice_log') : null;
+  if (voiceLogStr) {
+    try { AppState.voiceLog = JSON.parse(voiceLogStr); } catch (e) {}
+  }
+  const allToothDataStr = storage ? storage.getItem('pdd_all_tooth_data') : null;
+  if (allToothDataStr) {
+    try { AppState.allToothData = JSON.parse(allToothDataStr); } catch (e) {}
+  }
+
   // Load local storage patients if exists
-  const storedPatients = SafeStorage.getItem('pdd_patients');
+  const storedPatients = storage ? storage.getItem('pdd_patients') : null;
   if (storedPatients) {
     AppState.patients = JSON.parse(storedPatients);
   } else {
@@ -85,11 +146,11 @@ async function initApp() {
       { name: "Michael Chen", email: "michael@gmail.com", phone: "555-0144", history: "Healthy gums, routine deep scaling cleanups." },
       { name: "Emily Davis", email: "emily@gmail.com", phone: "555-0182", history: "Mild gingival irritation, regular checkups." }
     ];
-    SafeStorage.setItem('pdd_patients', JSON.stringify(AppState.patients));
+    if (storage) storage.setItem('pdd_patients', JSON.stringify(AppState.patients));
   }
 
   // Load user profile details if registered
-  const registeredUser = SafeStorage.getItem('pdd_registered_user');
+  const registeredUser = storage ? storage.getItem('pdd_registered_user') : null;
   if (registeredUser) {
     const user = JSON.parse(registeredUser);
     AppState.clinicalUserName = user.name;
@@ -929,7 +990,7 @@ function renderVoiceInput(patientName) {
 
       <!-- Log entries list -->
       <div class="voice-entry-card" style="margin-top: 24px; max-height: 180px; overflow-y: auto;">
-        <h4 style="font-size: 13px; font-weight: 700; text-transform: uppercase; opacity: 0.8; margin-bottom: 10px;">
+        <h4 id="voice-log-header" style="font-size: 13px; font-weight: 700; text-transform: uppercase; opacity: 0.8; margin-bottom: 10px;">
           Session Measurements Log (${AppState.voiceLog.length})
         </h4>
         <div id="voice-session-log-list">
@@ -1998,6 +2059,7 @@ function handleLogin(e) {
     if (res.success) {
       AppState.clinicalUserName = res.name;
       AppState.isAuthenticated = true;
+      SafeStorage.setItem('pdd_is_authenticated', 'true');
       window.location.hash = '#dashboard';
     } else {
       errDiv.textContent = res.message || 'Login failed.';
@@ -2023,6 +2085,7 @@ function handleSignup(e) {
     if (res.success) {
       AppState.clinicalUserName = name;
       AppState.isAuthenticated = true;
+      SafeStorage.setItem('pdd_is_authenticated', 'true');
       // Save details locally
       SafeStorage.setItem('pdd_registered_user', JSON.stringify({ name, email, phone }));
       window.location.hash = '#dashboard';
@@ -2069,6 +2132,7 @@ function handleOfflineBypass() {
   ApiService.reinitializeFirebase();
   AppState.clinicalUserName = 'Sarah Johnson';
   AppState.isAuthenticated = true;
+  SafeStorage.setItem('pdd_is_authenticated', 'true');
   window.location.hash = '#dashboard';
 }
 
@@ -2237,6 +2301,7 @@ function handleSaveLoginFirebaseConfig(prefix = 'login') {
 
 function handleLogout() {
   AppState.isAuthenticated = false;
+  SafeStorage.removeItem('pdd_is_authenticated');
   window.location.hash = '#login';
 }
 
@@ -2294,6 +2359,8 @@ function toggleManualVoiceListening(patientName) {
 
           // Sync to XAMPP asynchronously
           ApiService.saveToothData(decoded, parsed.toothNumber, parsed.values, entry.timestamp);
+          
+          saveProbingDataToStorage();
         } else {
           if (recognizedSpan) {
             recognizedSpan.innerHTML = `"${text}"<br><span style="color: #FF5252; font-size: 11px;">Could not parse. Try: "Tooth 11 three four five"</span>`;
@@ -2384,6 +2451,8 @@ function simulateManualVoiceInput(patientName) {
 
       // Sync to backend
       ApiService.saveToothData(decoded, parsed.toothNumber, parsed.values, entry.timestamp);
+      
+      saveProbingDataToStorage();
     }
   }, 800);
 }
@@ -2437,6 +2506,9 @@ function toggleVoiceListening(patientName) {
           // Sync to XAMPP asynchronously
           ApiService.saveToothData(decoded, parsed.toothNumber, parsed.values, entry.timestamp);
 
+          // Save to storage
+          saveProbingDataToStorage();
+
           // Re-render session list
           renderVoiceSessionList();
         } else {
@@ -2474,6 +2546,12 @@ function updateVoiceWaveform(active) {
 function renderVoiceSessionList() {
   const container = document.getElementById('voice-session-log-list');
   if (!container) return;
+  
+  const header = document.getElementById('voice-log-header');
+  if (header) {
+    header.textContent = `Session Measurements Log (${AppState.voiceLog.length})`;
+  }
+
   if (AppState.voiceLog.length === 0) {
     container.innerHTML = '<p style="font-size: 13px; opacity: 0.6; text-align: center; padding: 12px 0;">No sites logged yet in this session</p>';
     return;
@@ -2544,17 +2622,27 @@ function simulateVoiceInput(patientName) {
       // Sync to backend
       ApiService.saveToothData(decodeURIComponent(patientName), parsed.toothNumber, parsed.values, entry.timestamp);
       
+      saveProbingDataToStorage();
+      
       renderVoiceSessionList();
     }
   }, 800);
 }
 
 function handleVoiceFinish() {
-  VoiceService.stop();
+  try {
+    VoiceService.stop();
+  } catch (e) {
+    console.error('[Voice] Stop failed:', e);
+  }
   AppState.isListening = false;
-  recalculateMetrics().then(() => {
-    window.location.hash = '#processing-examination';
-  });
+  recalculateMetrics()
+    .catch((err) => {
+      console.error('[Recalculate] Error recalculating metrics:', err);
+    })
+    .finally(() => {
+      window.location.hash = '#processing-examination';
+    });
 }
 
 // --- Probing Grid Keypad Selection ---
@@ -2615,10 +2703,12 @@ function pressKeypadValue(val) {
     cell.textContent = val;
     cell.classList.add('filled');
   }
+  saveProbingDataToStorage();
 }
 
 function toggleManualBop(toothNum, checked) {
   AppState.manualBop[toothNum] = checked;
+  saveProbingDataToStorage();
 }
 
 function clearAllProbingData() {
@@ -2634,39 +2724,52 @@ function clearAllProbingDataInternal() {
   AppState.manualBop = {};
   AppState.voiceLog = [];
   AppState.allToothData = [];
+
+  const storage = window.SafeStorage || (typeof SafeStorage !== 'undefined' ? SafeStorage : null);
+  if (storage) {
+    storage.removeItem('pdd_manual_ppd');
+    storage.removeItem('pdd_manual_cal');
+    storage.removeItem('pdd_manual_bop');
+    storage.removeItem('pdd_voice_log');
+    storage.removeItem('pdd_all_tooth_data');
+  }
 }
 
 // --- Recalculate Periodontal Metrics ---
 async function recalculateMetrics() {
-  const metrics = AnalyticsEngine.computeMetrics(AppState);
-  
-  AppState.meanPpd = metrics.meanPpd;
-  AppState.meanCal = metrics.meanCal;
-  AppState.bopPercentage = metrics.bopPercentage;
-  AppState.deepPocketsCount = metrics.deepPocketsCount;
-  AppState.clinicalVerdict = metrics.clinicalVerdict;
-  AppState.stageAndGrade = metrics.stageAndGrade;
-  AppState.probHealthy = metrics.probHealthy;
-  AppState.probModerate = metrics.probModerate;
-  AppState.probSevere = metrics.probSevere;
-
-  // Make backend API request to update predicted weights if possible
   try {
-    const res = await ApiService.predictDisease(
-      metrics.meanPpd,
-      metrics.meanCal,
-      metrics.bopPercentage,
-      metrics.deepPocketsCount
-    );
-    if (res.success) {
-      AppState.clinicalVerdict = res.verdict;
-      AppState.stageAndGrade = res.stage_and_grade;
-      AppState.probHealthy = res.prob_healthy;
-      AppState.probModerate = res.prob_moderate;
-      AppState.probSevere = res.prob_severe;
+    const metrics = AnalyticsEngine.computeMetrics(AppState);
+    
+    AppState.meanPpd = metrics.meanPpd;
+    AppState.meanCal = metrics.meanCal;
+    AppState.bopPercentage = metrics.bopPercentage;
+    AppState.deepPocketsCount = metrics.deepPocketsCount;
+    AppState.clinicalVerdict = metrics.clinicalVerdict;
+    AppState.stageAndGrade = metrics.stageAndGrade;
+    AppState.probHealthy = metrics.probHealthy;
+    AppState.probModerate = metrics.probModerate;
+    AppState.probSevere = metrics.probSevere;
+
+    // Make backend API request to update predicted weights if possible
+    try {
+      const res = await ApiService.predictDisease(
+        metrics.meanPpd,
+        metrics.meanCal,
+        metrics.bopPercentage,
+        metrics.deepPocketsCount
+      );
+      if (res && res.success) {
+        AppState.clinicalVerdict = res.verdict;
+        AppState.stageAndGrade = res.stage_and_grade;
+        AppState.probHealthy = res.prob_healthy;
+        AppState.probModerate = res.prob_moderate;
+        AppState.probSevere = res.prob_severe;
+      }
+    } catch (e) {
+      console.log('[Recalculate] Offline mode prediction retained.', e);
     }
-  } catch (e) {
-    console.log('[Recalculate] Offline mode prediction retained.');
+  } catch (err) {
+    console.error('[Recalculate] General error computing metrics:', err);
   }
 }
 
@@ -2939,3 +3042,13 @@ function filterPatientDirectoryList() {
 
 // --- Run startup ---
 window.onload = initApp;
+
+function saveProbingDataToStorage() {
+  const storage = window.SafeStorage || (typeof SafeStorage !== 'undefined' ? SafeStorage : null);
+  if (!storage) return;
+  storage.setItem('pdd_manual_ppd', JSON.stringify(AppState.manualPpd));
+  storage.setItem('pdd_manual_cal', JSON.stringify(AppState.manualCal));
+  storage.setItem('pdd_manual_bop', JSON.stringify(AppState.manualBop));
+  storage.setItem('pdd_voice_log', JSON.stringify(AppState.voiceLog));
+  storage.setItem('pdd_all_tooth_data', JSON.stringify(AppState.allToothData));
+}

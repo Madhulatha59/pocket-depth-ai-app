@@ -3,7 +3,7 @@
    Web equivalent of Android's VoiceRecognizerManager
    ============================================================ */
 
-const VoiceService = (() => {
+var VoiceService = (() => {
   let recognition = null;
   let isListening = false;
   let callback = null;
@@ -85,3 +85,6 @@ const VoiceService = (() => {
     }
   };
 })();
+
+window.VoiceService = VoiceService;
+

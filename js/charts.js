@@ -3,7 +3,7 @@
    Custom widgets mirroring the Compose Canvas UI
    ============================================================ */
 
-const ChartService = (() => {
+var ChartService = (() => {
   /**
    * Draws a smooth activity line trend on the dashboard
    */
@@ -165,3 +165,6 @@ const ChartService = (() => {
 
   return { drawActivityTrend, drawDonutChart };
 })();
+
+window.ChartService = ChartService;
+
