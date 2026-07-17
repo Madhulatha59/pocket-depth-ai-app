@@ -343,11 +343,11 @@ var ApiService = (() => {
           break;
       }
 
-      // If connected to Firebase, save diagnostic outcomes as training/historical markers
+      // If connected to Firebase, save diagnostic outcomes as training/historical markers (non-blocking)
       if (isFirebaseConnected) {
         try {
           const clinicianId = auth.currentUser ? auth.currentUser.uid : 'anonymous';
-          await db.collection('diagnoses').add({
+          db.collection('diagnoses').add({
             meanPpd,
             meanCal,
             bopPercentage,
@@ -356,9 +356,11 @@ var ApiService = (() => {
             stageAndGrade,
             clinicianId,
             timestamp: new Date().toISOString()
+          }).catch(e => {
+            console.warn('[Firebase] Could not save diagnostic event log:', e);
           });
         } catch (e) {
-          console.warn('[Firebase] Could not save diagnostic event log:', e);
+          console.warn('[Firebase] Failed to invoke diagnoses log:', e);
         }
       }
 

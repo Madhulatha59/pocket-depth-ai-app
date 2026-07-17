@@ -1121,7 +1121,7 @@ function renderManualInput(patientName) {
 
       <!-- Bottom Compute Button -->
       <div style="padding: 32px 24px 0; max-width: 480px; margin: 0 auto;">
-        <button class="btn btn-white btn-lg" style="width: 100%; font-weight: 800; font-size: 16px; background: white; color: var(--primary); border: none; height: 60px; border-radius: 30px; cursor: pointer;" onclick="window.location.hash = '#processing-examination'">
+        <button class="btn btn-white btn-lg" style="width: 100%; font-weight: 800; font-size: 16px; background: white; color: var(--primary); border: none; height: 60px; border-radius: 30px; cursor: pointer;" onclick="handleManualStaging()">
           Calculate AI Staging
         </button>
       </div>
@@ -2636,6 +2636,16 @@ function handleVoiceFinish() {
     console.error('[Voice] Stop failed:', e);
   }
   AppState.isListening = false;
+  recalculateMetrics()
+    .catch((err) => {
+      console.error('[Recalculate] Error recalculating metrics:', err);
+    })
+    .finally(() => {
+      window.location.hash = '#processing-examination';
+    });
+}
+
+function handleManualStaging() {
   recalculateMetrics()
     .catch((err) => {
       console.error('[Recalculate] Error recalculating metrics:', err);
