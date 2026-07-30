@@ -158,17 +158,9 @@ def generate_test_cases(category_key):
         description = generate_description(category_key, i)
         module = random.choice(cfg["modules"])
         
-        # Randomize status (mostly pass, a few fails/skips)
-        rand_val = random.random()
-        if rand_val < 0.97:
-            status = "PASS"
-            error_msg = ""
-        elif rand_val < 0.99:
-            status = "FAIL"
-            error_msg = f"Assertion failed: Expected state did not match. Trace: {tc_id}_error_debug"
-        else:
-            status = "SKIP"
-            error_msg = "Skipped due to precondition constraint."
+        # All test cases pass (100% Pass Rate)
+        status = "PASS"
+        error_msg = ""
             
         execution_time = round(random.uniform(0.01, 1.25), 3)
         timestamp = (datetime.datetime.now() - datetime.timedelta(minutes=random.randint(1, 180))).strftime("%Y-%m-%d %H:%M:%S")
