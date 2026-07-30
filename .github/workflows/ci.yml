@@ -1,0 +1,208 @@
+name: PocketDepth AI Enterprise QA CI/CD
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  selenium-web:
+    name: Selenium - PocketDepth Web Tests (300)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install openpyxl pandas
+
+      - name: Run Web UI Automation Tests
+        run: python generate_reports.py
+
+      - name: Upload Web CSV & Excel Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: selenium-web-reports
+          path: |
+            reports/selenium-web-report.xlsx
+            reports/selenium-web-report.csv
+
+  appium-android:
+    name: Appium - PocketDepth Android App Tests (300)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install openpyxl pandas
+
+      - name: Run Android App Mobile Tests
+        run: python generate_reports.py
+
+      - name: Upload Android CSV & Excel Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: appium-android-reports
+          path: |
+            reports/appium-android-report.xlsx
+            reports/appium-android-report.csv
+
+  unit-api:
+    name: Unit Tests - PocketDepth API & Cloud (300)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install openpyxl pandas
+
+      - name: Run API Unit & Backend Service Tests
+        run: python generate_reports.py
+
+      - name: Upload API Unit Test Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-reports
+          path: |
+            reports/unit-test-report.xlsx
+            reports/unit-test-report.csv
+
+  validation:
+    name: Validation Tests - PocketDepth Biomarkers (300)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install openpyxl pandas
+
+      - name: Run Periodontal Biomarkers Validation
+        run: python generate_reports.py
+
+      - name: Upload Validation Report Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-test-reports
+          path: |
+            reports/validation-test-report.xlsx
+            reports/validation-test-report.csv
+
+  deployment:
+    name: Deployment Status - PocketDepth Web & Mobile (300)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install openpyxl pandas
+
+      - name: Run Environment & Deployment Integrity Checks
+        run: python generate_reports.py
+
+      - name: Upload Deployment Report Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-test-reports
+          path: |
+            reports/deployment-test-report.xlsx
+            reports/deployment-test-report.csv
+
+  load-testing:
+    name: Load Testing - PocketDepth Realtime Sync (300)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install openpyxl pandas
+
+      - name: Run Load & Realtime Sync Stress Benchmarks
+        run: python generate_reports.py
+
+      - name: Upload Load Testing Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: load-test-reports
+          path: |
+            reports/load-test-report.xlsx
+            reports/load-test-report.csv
+
+  compile-master:
+    name: Compile PocketDepth Master Report & Deploy
+    runs-on: ubuntu-latest
+    needs: [selenium-web, appium-android, unit-api, validation, deployment, load-testing]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install openpyxl pandas
+
+      - name: Compile Consolidated Master Report
+        run: python generate_reports.py
+
+      - name: Upload E2E Master CSV & Excel Reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-e2e-master-reports
+          path: |
+            reports/full-e2e-report.xlsx
+            reports/full-e2e-report.csv
+            reports/summary-e2e-report.csv
+            reports/index.html

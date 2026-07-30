@@ -443,6 +443,36 @@ def generate_reports():
     master_wb.save(os.path.join(reports_dir, "full-e2e-report.xlsx"))
     print(f"Saved E2E Master Report: {reports_dir}/full-e2e-report.xlsx")
     
+    # Save Master CSV (all test cases consolidated)
+    master_csv_path = os.path.join(reports_dir, "full-e2e-report.csv")
+    with open(master_csv_path, 'w', newline='', encoding='utf-8') as f:
+        master_headers = ["Category", "Test Case ID", "Description", "Module", "Status", "Execution Time (s)", "Error Message", "Timestamp"]
+        writer = csv.DictWriter(f, fieldnames=master_headers)
+        writer.writeheader()
+        for key, cases in all_data.items():
+            for c in cases:
+                row_dict = {"Category": CATEGORIES[key]["name"]}
+                row_dict.update(c)
+                writer.writerow(row_dict)
+    print(f"Saved Master CSV: {master_csv_path}")
+
+    # Save Summary CSV
+    summary_csv_path = os.path.join(reports_dir, "summary-e2e-report.csv")
+    with open(summary_csv_path, 'w', newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        writer.writerow(["Test Suite Category", "Total Cases", "Passed", "Failed", "Skipped", "Pass Rate", "Duration (s)"])
+        writer.writerows(summary_rows)
+        writer.writerow([
+            "Consolidated Total",
+            total_all,
+            passed_all,
+            failed_all,
+            skipped_all,
+            f"{round((passed_all / total_all) * 100, 2)}%",
+            round(duration_all, 2)
+        ])
+    print(f"Saved Summary CSV: {summary_csv_path}")
+    
     # Generate HTML summary file
     generate_html_summary(reports_dir, summary_rows, total_all, passed_all, failed_all, skipped_all, duration_all)
     
